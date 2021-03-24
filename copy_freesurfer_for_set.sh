@@ -27,31 +27,28 @@ do
     mkdir -p ${OUTDIR}/${i}
 
     # Freesurfer folders
-    mkdir -p ${OUTDIR}/${i}/label
     for cfile in lh.aparc.annot rh.aparc.annot lh.aparc.a2009s.annot rh.aparc.a2009s.annot;
     do
         if [ -f ${FSINDIR}/${i}/label/${cfile} ]; then
-            cp -L ${FSINDIR}/${i}/label/${cfile}  ${OUTDIR}/${i}/label/
+            cp -L ${FSINDIR}/${i}/label/${cfile}  ${OUTDIR}/${i}/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
     done
 
-    mkdir -p ${OUTDIR}/${i}/mri
     for cfile in wmparc;
     do
         if [ -f ${FSINDIR}/${i}/mri/${cfile}* ]; then
-            cp -L ${FSINDIR}/${i}/mri/${cfile}*  ${OUTDIR}/${i}/mri/
+            cp -L ${FSINDIR}/${i}/mri/${cfile}*  ${OUTDIR}/${i}/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
     done
 
-    mkdir -p ${OUTDIR}/${i}/surf
     for cfile in lh.pial lh.white rh.pial rh.white;
     do
         if [ -f ${FSINDIR}/${i}/surf/${cfile} ]; then
-            cp -L ${FSINDIR}/${i}/surf/${cfile}  ${OUTDIR}/${i}/surf/
+            cp -L ${FSINDIR}/${i}/surf/${cfile}  ${OUTDIR}/${i}/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi

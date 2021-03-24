@@ -3,8 +3,7 @@ SET nextflow pipeline
 Run the "Surface-Enhanced Tractography" (SET) nextflow pipeline
 
 USAGE
-nextflow run main.nf -profile AND --surfaces AND --tractoflow  {OPT --nowarp}
-nextflow run main.nf -profile AND --surfaces AND --fodf  AND --pft_maps AND [--antswarp OR --nowarp]  {OPT --rois_seed}
+nextflow run main.nf -profile AND --input {OPT --nowarp}
 
 
 PROFILE
@@ -15,13 +14,14 @@ You need to chose a profile with "-profile chosen_profile" for surfaces and atla
   freesurfer_a2009s_proper  : Freesurfer a2009s surfaces with each subcortical structures (separate) and brainstem
 
   civet2_dkt                : CIVET 2.0 DKT surfaces with each subcortical structures (separate) and brainstem
+  civet2_aal                : CIVET 2.0 AAL surfaces with each subcortical structures (separate) and brainstem
 
-  vtk                       : VTK surfaces directly as input, combined with a freesurfer_* profile
+  vtk                       : VTK surfaces directly as input, combined with a freesurfer_* profile (for HCP)
 
 For CIVET, if your not using singularity image or want another template use: "--civet_template path/to/CIVET_2.0"
 
 DESCRIPTION
-    --tractoflow=/path/to/[tractoflow/results]
+    --input=/path/to/[tractoflow/results]
 
     --surfaces=/path/to/
                         freesurfer_output   -profile freesurfer*

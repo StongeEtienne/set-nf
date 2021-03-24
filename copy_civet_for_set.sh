@@ -27,31 +27,28 @@ do
     mkdir -p ${OUTDIR}/${i}
 
     # CIVET folders
-    mkdir -p ${OUTDIR}/${i}/surfaces
     for cfile in gray_surface_left_81920.obj gray_surface_right_81920.obj white_surface_left_81920.obj white_surface_right_81920.obj;
     do
         if [ -f ${CIVETINDIR}/${i}/surfaces/*${cfile} ]; then
-            cp -L ${CIVETINDIR}/${i}/surfaces/*${cfile}  ${OUTDIR}/${i}/surfaces/
+            cp -L ${CIVETINDIR}/${i}/surfaces/*${cfile}  ${OUTDIR}/${i}/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
     done
 
-    mkdir -p ${OUTDIR}/${i}/transforms/linear
     for cfile in t1_tal.xfm;
     do
         if [ -f ${CIVETINDIR}/${i}/transforms/linear/*${cfile} ]; then
-            cp -L ${CIVETINDIR}/${i}/transforms/linear/*${cfile}  ${OUTDIR}/${i}/transforms/linear/
+            cp -L ${CIVETINDIR}/${i}/transforms/linear/*${cfile}  ${OUTDIR}/${i}/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
     done
 
-    mkdir -p ${OUTDIR}/${i}/segment
     for cfile in animal_labels.mnc;
     do
         if [ -f ${CIVETINDIR}/${i}/segment/*${cfile} ]; then
-            cp -L ${CIVETINDIR}/${i}/segment/*${cfile}  ${OUTDIR}/${i}/segment/
+            cp -L ${CIVETINDIR}/${i}/segment/*${cfile}  ${OUTDIR}/${i}/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi

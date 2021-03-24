@@ -2,17 +2,8 @@
 
 // Diffusion Input options
 
-// Surface options
-params.surfaces = false
-
 // all-in-one option
-params.tractoflow = false
-
-// manual input
-params.fodf = false
-params.pft_maps = false
-params.rois_seed = false
-params.antswarp = false
+params.input = false
 
 // option for both
 params.nowarp = false
@@ -133,115 +124,39 @@ process README {
     """
 }
 
-if (params.tractoflow){
-    if (params.fodf || params.pft_maps || params.rois_seed || params.antswarp){
-        log.error "Cannot use --tractoflow with --fodf --pft_maps --rois_seed or --antswarp \n\t --tractoflow already set all of those inputs"
-    }
+if (params.input){
 
-    log.info "Input Ants Warp: ${params.tractoflow}"
-    tractoflow = file(params.tractoflow)
+    log.info "Input folder: ${params.input}"
+    input = file(params.input)
 
     map_for_rois_seed = Channel
-        .fromFilePairs("${tractoflow}/**/DTI_Metrics/*fa.nii.gz",
-                       size: 1, maxDepth:3, flat: true) {it.parent.parent.name}
-        .ifEmpty { exit 1, "Cannot find ${tractoflow}/**/DTI_Metrics/*fa.nii.gz"}
+        .fromFilePairs("${input}/**/*fa.nii.gz",
+                       size: 1, maxDepth:3, flat: true) {it.parent.name}
+        .ifEmpty { exit 1, "Cannot find ${input}/**/*fa.nii.gz"}
 
-    ants_transfo_to_convert = Channel
-        .fromFilePairs("${tractoflow}/**/Register_T1/*{output0GenericAffine.mat,output1InverseWarp.nii.gz}",
-                       size: 2, maxDepth:3, flat: true) {it.parent.parent.name}
-        .ifEmpty { exit 1, "Cannot find ${tractoflow}/**/Register_T1/*{output0GenericAffine.mat,output1InverseWarp.nii.gz}" }
-
-    fodf_and_map_for_pft = Channel
-        .fromFilePairs("${tractoflow}/**/{FODF_Metrics/*fodf.nii.gz,PFT_Maps/*map_exclude.nii.gz,PFT_Maps/*map_include.nii.gz}",
-                       size: 3, maxDepth:3, flat: true) {it.parent.parent.name}
-        .ifEmpty { exit 1, "Cannot find ${tractoflow}/**/{FODF_Metrics/*fodf.nii.gz,PFT_Maps/*map_exclude.nii.gz,PFT_Maps/*map_include.nii.gz}" }
-
-    nb_sub_fodf = file("${tractoflow}/**/FODF_Metrics/*fodf.nii.gz").size()
-    println("Number of fodf is " + nb_sub_fodf.toString())
-}
-else {
-    if (params.antswarp && params.nowarp){
-        log.error "Choose between --antswarp  or --nowarp, not both"
+    if (params.surfaceflow_only){
+        tractogram_for_intersections = Channel
+            .fromFilePairs("${input}/**/*.trk",
+                           size: 1,
+                           maxDepth:3,
+                           flat: true) {it.parent.name}
+    }
+    else{
+        fodf_and_map_for_pft = Channel
+            .fromFilePairs("${input}/**/*{fodf.nii.gz,map_exclude.nii.gz,map_include.nii.gz}",
+                           size: 3, maxDepth:3, flat: true) {it.parent.name}
+            .ifEmpty { exit 1, "Cannot find ${input}/**/*{fodf.nii.gz,map_exclude.nii.gz,map_include.nii.gz}"}
     }
 
-    if (params.antswarp){
-        log.info "Input Ants Warp: ${params.antswarp}"
-        antswarp = file(params.antswarp)
+    if (!params.nowarp){
         ants_transfo_to_convert = Channel
-            .fromFilePairs("${antswarp}/**/Register_T1/*{output0GenericAffine.mat,output1InverseWarp.nii.gz}",
-                           size: 2, maxDepth:3, flat: true) {it.parent.parent.name}
-            .ifEmpty { exit 1, "Cannot find ${antswarp}/**/Register_T1/*{output0GenericAffine.mat,output1InverseWarp.nii.gz}" }
-    }
-    else if (!params.nowarp){
-        log.error "Use --antswarp path/to/warps/ (or --tractoflow) \n\t to transform T1 surfaces to diffusion (b0) space \n\t or --nowarp if T1 is already in diffusion space"
+            .fromFilePairs("${input}/**/*{output0GenericAffine.mat,output1InverseWarp.nii.gz}",
+                           size: 2, maxDepth:3, flat: true) {it.parent.name}
+            .ifEmpty { exit 1, "Cannot find ${input}/**/*{output0GenericAffine.mat,output1InverseWarp.nii.gz}"}
     }
 
-    if (params.rois_seeding){
-        if (!params.rois_seed && !params.tractoflow){
-            log.error "Cannot use rois_seeding=true if --tractoflow  or --rois_seed is not given \n\t put rois_seeding=false in the config file"
-        }
-        else if (params.rois_seed){
-            log.info "Input Rois Seeds: ${params.rois_seed}"
-            rois_seed = file(params.rois_seed)
-            map_for_rois_seed = Channel
-                .fromFilePairs("${rois_seed}/**/*fa.nii.gz",
-                               size: 1, maxDepth:3, flat: true) {it.parent.parent.name}
-                .ifEmpty { exit 1, "Cannot find ${rois_seed}/**/*fa.nii.gz" }
-        }
-    }
-
-    if (params.rois_seeding){
-        if (!params.rois_seed && !params.tractoflow){
-            log.error "Cannot use rois_seeding=true if --tractoflow  or --rois_seed is not given \n\t put rois_seeding=false in the config file"
-        }
-        else if (params.rois_seed){
-            log.info "Input Rois Seeds: ${params.rois_seed}"
-            rois_seed = file(params.rois_seed)
-            map_for_rois_seed = Channel
-                .fromFilePairs("${rois_seed}/**/*fa.nii.gz",
-                               size: 1, maxDepth:3, flat: true) {it.parent.parent.name}
-                .ifEmpty { exit 1, "Cannot find ${rois_seed}/**/*fa.nii.gz" }
-        }
-    }
-    else if (params.rois_seed){
-        log.error "--rois_seed was given but rois_seeding=false \n\t put rois_seeding=true in the config file"
-    }
-
-    if (params.fodf){
-        log.info "Input FODF: ${params.fodf}"
-        fodf = file(params.fodf)
-
-        fodf_for_pft = Channel
-            .fromFilePairs("${fodf}/**/*/*fodf.nii.gz",
-                           size: 1, maxDepth:3, flat: true) {it.parent.parent.name}
-            .ifEmpty { exit 1, "Cannot find ${fodf}/**/*/*fodf.nii.gz" }
-       nb_sub_fodf = file("${fodf}/**/*/*fodf.nii.gz").size()
-       println("Number of fodf is " + nb_sub_fodf.toString())
-    }
-    else {
-        log.error "Use --fodf path/to/warps/ (or --tractoflow)"
-    }
-
-    if (params.pft_maps){
-        log.info "Input PFT maps: ${params.pft_maps}"
-        pft_maps = file(params.pft_maps)
-
-        maps_for_pft = Channel
-            .fromFilePairs("${pft_maps}/**/*/*{map_exclude.nii.gz,map_include.nii.gz}",
-                           size: 2, maxDepth:3, flat: true) {it.parent.parent.name}
-            .ifEmpty { exit 1, "Cannot find ${pft_maps}/**/*/*{map_exclude.nii.gz,map_include.nii.gz}" }
-    }
-    else {
-        log.error "Use --pft_maps path/to/warps/ (or --tractoflow)"
-    }
-
-    fodf_for_pft
-        .join(maps_for_pft)
-        .set{fodf_and_map_for_pft}
-}
-
-if (params.nowarp){
-    log.info "No Ants Warp: Surface are assumed in the diffusion (b0) space\n"
+    nb_sub_fodf = file("${input}/**/*fodf.nii.gz").size()
+    println("Number of subject is " + nb_sub_fodf.toString())
 }
 
 if (params.is_freesurfer && params.is_civet)
@@ -249,30 +164,42 @@ if (params.is_freesurfer && params.is_civet)
     log.error " cannot use civet together with freesurfer profile )"
 }
 else if (params.is_freesurfer) {
-    log.info "Input Freesurfer: ${params.surfaces}"
     log.info " Profile: ${params.atlas}"
-    surfaces = file(params.surfaces)
+    input = file(params.input)
+
+    if (params.atlas=="freesurfer_standard"){
+        in_surfaces_label = Channel
+            .fromFilePairs("${input}/**/{lh.aparc.annot,rh.aparc.annot}",
+                           size: 2, maxDepth:3, flat: true) {it.parent.name}
+            .ifEmpty { exit 1, "Cannot find freesurfer data: ${surfaces}/**/{lh.aparc.annot,rh.aparc.annot}" }
+    }
+    else if (params.atlas=="freesurfer_a2009s"){
+        in_surfaces_label = Channel
+            .fromFilePairs("${input}/**/{lh.aparc.a2009s.annot,rh.aparc.a2009s.annot}",
+                           size: 2, maxDepth:3, flat: true) {it.parent.name}
+            .ifEmpty { exit 1, "Cannot find freesurfer data ${surfaces}/**/{lh.aparc.a2009s.annot,rh.aparc.a2009s.annot}" }
+    }
+
+    in_surfaces_wmparc = Channel
+        .fromFilePairs("${input}/**/wmparc*",
+                       size: 1, maxDepth:3, flat: true) {it.parent.name}
+        .ifEmpty { exit 1, "Cannot find freesurfer data ${surfaces}/**/wmparc*" }
+
 
     if (params.is_vtk) {
-        if (params.atlas=="freesurfer_standard"){
-            in_surfaces = Channel
-                .fromFilePairs("${surfaces}/**/*{lh*aparc.annot,lh*pial.vtk,lh*white.vtk,rh*aparc.annot,rh*pial.vtk,rh*white.vtk,wmparc*}",
-                               size: 7, maxDepth:3, flat: true) {it.parent.name}
-                .ifEmpty { exit 1, "Cannot find freesurfer data:  ${surfaces}/**/*{lh*aparc.annot,lh*pial.vtk,lh*white.vtk,rh*aparc.annot,rh*pial.vtk,rh*white.vtk,wmparc*}" }
-        }
-        else if (params.atlas=="freesurfer_a2009s"){
-            in_surfaces = Channel
-                .fromFilePairs("${surfaces}/**/*{lh*a2009s.annot,lh*pial.vtk,lh*white.vtk,rh*a2009s.annot,rh*pial.vtk,rh*white.vtk,wmparc*}",
-                               size: 7, maxDepth:3, flat: true) {it.parent.name}
-                .ifEmpty { exit 1, "Cannot find freesurfer data: ${surfaces}/**/*{lh*a2009s.annot,lh*pial.vtk,lh*white.vtk,rh*a2009s.annot,rh*pial.vtk,rh*white.vtk,wmparc*}" }
-        }
-        else
-        {
-            log.error "Freesurfer profile should be given with vtk input ( e.g. -profile vtk, freesurfer_proper )"
-        }
+        in_surfaces_mesh = Channel
+            .fromFilePairs("${input}/**/{lh*pial.vtk,lh*white.vtk,rh*pial.vtk,rh*white.vtk}",
+                           size: 4, maxDepth:3, flat: true) {it.parent.name}
+            .ifEmpty { exit 1, "Cannot find freesurfer data ${surfaces}/**/{lh*pial.vtk,lh*white.vtk,rh*pial.vtk,rh*white.vtk}" }
 
-        nb_sub_surf = file("${surfaces}/**/*lh*white.vtk").size()
-        println("Number of surface is " + nb_sub_surf.toString())
+
+        nb_sub_surf = file("${input}/**/*lh*white.vtk").size()
+        println("Number of vtk freesurfer is " + nb_sub_surf.toString())
+
+        in_surfaces_label
+            .join(in_surfaces_wmparc)
+            .join(in_surfaces_mesh)
+            .set{in_surfaces}
 
         (annots_for_surfaces_masks, annots_for_surfaces_labels, label_vol_to_convert, surfaces_for_surfaces_masks, surfaces_for_surfaces_labels, surfaces_for_lps) = in_surfaces
           .map{sid, lh_annot, lh_pial, lh_white, rh_annot, rh_pial, rh_white, wmparc ->
@@ -283,38 +210,21 @@ else if (params.is_freesurfer) {
               tuple(sid, lh_white, rh_white),
               tuple(sid, lh_pial, rh_pial, lh_white, rh_white)]}
           .separate(6)
+
     }
     else{
-        if (params.atlas=="freesurfer_standard"){
-            in_surfaces_label = Channel
-                .fromFilePairs("${surfaces}/**/{label/lh.aparc.annot,label/rh.aparc.annot}",
-                               size: 2, maxDepth:3, flat: true) {it.parent.parent.name}
-                .ifEmpty { exit 1, "Cannot find freesurfer data: ${surfaces}/**/{label/lh.aparc.annot,label/rh.aparc.annot}" }
-        }
-        else if (params.atlas=="freesurfer_a2009s"){
-            in_surfaces_label = Channel
-                .fromFilePairs("${surfaces}/**/{label/lh.aparc.a2009s.annot,label/rh.aparc.a2009s.annot}",
-                               size: 2, maxDepth:3, flat: true) {it.parent.parent.name}
-                .ifEmpty { exit 1, "Cannot find freesurfer data ${surfaces}/**/{label/lh.aparc.a2009s.annot,label/rh.aparc.a2009s.annot}" }
-        }
-
-        in_surfaces_wmparc = Channel
-            .fromFilePairs("${surfaces}/**/mri/wmparc*",
-                           size: 1, maxDepth:3, flat: true) {it.parent.parent.name}
-            .ifEmpty { exit 1, "Cannot find freesurfer data ${surfaces}/**/mri/wmparc*" }
-
         in_surfaces_mesh = Channel
-            .fromFilePairs("${surfaces}/**/{surf/lh.pial,surf/lh.white,surf/rh.pial,surf/rh.white}",
-                           size: 4, maxDepth:3, flat: true) {it.parent.parent.name}
-            .ifEmpty { exit 1, "Cannot find freesurfer data ${surfaces}/**/{surf/lh.pial,surf/lh.white,surf/rh.pial,surf/rh.white}" }
+            .fromFilePairs("${input}/**/{lh.pial,lh.white,rh.pial,rh.white}",
+                           size: 4, maxDepth:3, flat: true) {it.parent.name}
+            .ifEmpty { exit 1, "Cannot find freesurfer data ${surfaces}/**/{lh.pial,lh.white,rh.pial,rh.white}" }
 
         in_surfaces_label
             .join(in_surfaces_wmparc)
             .join(in_surfaces_mesh)
             .set{in_surfaces}
 
-        nb_sub_surf = file("${surfaces}/**/surf/lh.white").size()
-        println("Number of surface is " + nb_sub_surf.toString())
+        nb_sub_surf = file("${input}/**/lh.white").size()
+        println("Number of freesurfer is " + nb_sub_surf.toString())
 
         (annots_for_surfaces_masks, annots_for_surfaces_labels, label_vol_to_convert, freesurfer_surfaces_to_convert) = in_surfaces
           .map{sid, lh_annot, rh_annot, wmparc, lh_pial, lh_white, rh_pial, rh_white ->
@@ -353,24 +263,24 @@ else if (params.is_freesurfer) {
     }
 }
 else if (params.is_civet) {
-    log.info "Input Civet: ${params.surfaces}"
+    log.info "Input Civet: ${params.input}"
     log.info "Civet Labels: ${params.civet_template}"
     log.info " Profile: ${params.atlas}"
 
     if (params.atlas=="civet2"){
-        surfaces = file(params.surfaces)
+        input = file(params.input)
         in_civet_surf = Channel
-            .fromFilePairs("${surfaces}/**/{surfaces/*gray_surface_left_81920.obj,surfaces/*gray_surface_right_81920.obj,surfaces/*white_surface_left_81920.obj,surfaces/*white_surface_right_81920.obj}",
-                           size: 4, maxDepth:4, flat: true) {it.parent.parent.name}
-            .ifEmpty { exit 1, "Cannot find civet data: ${surfaces}/**/{surfaces/*gray_surface_left_81920.obj,surfaces/*gray_surface_right_81920.obj,surfaces/*white_surface_left_81920.obj,surfaces/*white_surface_right_81920.obj}" }
+            .fromFilePairs("${input}/**/*{gray_surface_left_81920.obj,gray_surface_right_81920.obj,white_surface_left_81920.obj,white_surface_right_81920.obj}",
+                           size: 4, maxDepth:4, flat: true) {it.parent.name}
+            .ifEmpty { exit 1, "Cannot find civet data: ${surfaces}/**/*{gray_surface_left_81920.obj,gray_surface_right_81920.obj,white_surface_left_81920.obj,white_surface_right_81920.obj}" }
         in_civet_transfo = Channel
-            .fromFilePairs("${surfaces}/**/transforms/linear/*t1_tal.xfm",
-                            size: 1, maxDepth:5, flat: true) {it.parent.parent.parent.name}
-             .ifEmpty { exit 1, "Cannot find civet data: ${surfaces}/**/transforms/linear/*t1_tal.xfm" }
+            .fromFilePairs("${input}/**/*t1_tal.xfm",
+                            size: 1, maxDepth:5, flat: true) {it.parent.name}
+             .ifEmpty { exit 1, "Cannot find civet data: ${surfaces}/**/*t1_tal.xfm" }
         in_civet_animal = Channel
-            .fromFilePairs("${surfaces}/**/segment/*animal_labels.mnc",
-                            size: 1, maxDepth:5, flat: true) {it.parent.parent.name}
-             .ifEmpty { exit 1, "Cannot find civet data: ${surfaces}/**/segment/*animal_labels.mnc" }
+            .fromFilePairs("${input}/**/*animal_labels.mnc",
+                            size: 1, maxDepth:5, flat: true) {it.parent.name}
+             .ifEmpty { exit 1, "Cannot find civet data: ${surfaces}/**/*animal_labels.mnc" }
     }
 
     process A__Civet_Template {
@@ -395,8 +305,8 @@ else if (params.is_civet) {
         .combine(in_civet_template)
         .set{in_civet}
 
-    nb_sub_surf = file("${surfaces}/**/surfaces/*gray_surface_left_81920.obj").size()
-    println("Number of surface is " + nb_sub_surf.toString())
+    nb_sub_surf = file("${input}/**/*gray_surface_left_81920.obj").size()
+    println("Number of civet is " + nb_sub_surf.toString())
 
     (annots_for_surfaces_masks, annots_for_surfaces_labels, xfm_transfo_to_convert, animal_to_convert, civet_surfaces_to_convert) = in_civet
       .map{sid, lh_pial, rh_pial, lh_white, rh_white, xfm_transfo, animal_labels, lh_annot, rh_annot  ->
@@ -699,7 +609,6 @@ process B__Concatenate_Surface {
     """
 }
 
-
 masks_for_concatenate
     .join(rois_mask_for_concatenate)
     .set{all_masks_for_concatenate}
@@ -880,164 +789,238 @@ process D__Surface_Flow {
         """
 }
 
-surfaces_for_seed
-    .join(seed_mask_for_set_nf)
-    .set{data_rand_for_surface_seed}
 
-process E__Surface_Seeding_Map {
-    cpus 1
-
-    input:
-    set sid, file(surf), file(mask)\
-        from data_rand_for_surface_seed
-
-    output:
-    set sid, "${sid}__seeding_map_0.npy", "${sid}__zeros_tri_map.npy"\
-        into surfaces_seeding_map_for_set
-
-    script:
-    area_seeding_tag=""
-    if (params.seeds_weighted_per_area) {
-        area_seeding_tag=" --triangle_area_weighting "
-    }
-    """
-    scil_surface_seed_map.py ${surf}\
-        ${sid}__seeding_map_0.npy\
-        --vts_mask ${mask}\
-        ${area_seeding_tag}
-
-    scil_surface_seed_map.py ${surf} ${sid}__zeros_tri_map.npy\
-        --zeros_map
-    """
-}
-
-// Where the magic happen
-nb_tracking_per_sub = params.nb_dynamic_seeding_iter * (random_generator_list).size()
-total_tracking = nb_subject*(nb_tracking_per_sub+1)
-
-surfaces_seeding_map_for_set
-    .combine(random_generator_list)
-    .combine([0])
-    .set{setup_loop_ch}
-
-feedback_ch = Channel.create()
-intersections_for_concatenate = Channel.create()
-streamlines_for_concatenate = Channel.create()
-set_input_ch = setup_loop_ch.mix(feedback_ch).take(total_tracking)
-
-set_input_ch
-    .combine(surface_flow_surfaces_for_pft, by : 0)
-    .combine(fodf_and_map_for_pft, by : 0)
+if(params.surfaceflow_only){
+    surface_flow_surfaces_for_pft
     .combine(intersections_mask_for_set_nf, by : 0)
     .combine(surface_type_for_set_nf, by : 0)
     .combine(surface_flow_lines_for_combine, by : 0)
-    .set{data_for_set}
+        .set{surface_and_map_for_intersections}
 
-process F__Surface_Enhanced_Tractography {
-    cpus 1
+    tractogram_for_intersections
+        .combine(surface_and_map_for_intersections, by : 0)
+        .set{data_for_intersections}
 
-    input:
-    set sid, file(seed_map), file(sum_density), random_id, loop_id,\
-        file(surf), file(fodf), file(map_exclude), file(map_include),\
-        file(s_mask), file(s_type), file(flow)\
-            from data_for_set
 
-    output:
-    set sid, "${sid}__intersections_${rand_loop_id}_filtered.npz"\
-        into intersections_for_concatenate
-    set sid, "${sid}__set_${rand_loop_id}_filtered.fib"\
-        into streamlines_for_concatenate
-    set sid, file(seed_map), "${sid}__sum_density_${rand_loop_id}.npy", random_id, next_id\
-        into feedback_ch
+    process EF__Surface_Flow_onto_Tractography {
+        cpus 1
 
-    file "${sid}__seeding_map_${rand_loop_id}.npy"
-    file "${sid}__seeds_${rand_loop_id}.npz"
-    file "${sid}__set_density_${rand_loop_id}.npy"
+        input:
+        set sid, file(tractogram), file(surf), file(s_mask), file(s_type), file(flow)\
+                from data_for_intersections
+        // set sid, file(tractogram), file(surf), file(flow), file(s_mask), file(s_type)\
+        //     from data_for_intersections
+        // set sid, file(seed_map), file(sum_density), random_id, loop_id,\
+        //     file(surf), file(fodf), file(map_exclude), file(map_include),\
+        //     file(s_mask), file(s_type), file(flow)\
+        //         from data_for_set
 
-    when:
-    loop_id < params.nb_dynamic_seeding_iter
+        output:
+        set sid, "${tractogram.getSimpleName()}_filtered.npz"\
+            into intersections_for_concatenate
+        set sid, "${tractogram.getSimpleName()}_filtered.fib"\
+            into streamlines_for_concatenate
 
-    script:
-    next_id = loop_id + 1
-    rand_loop_id = random_id.toString().padLeft(4, "0") + "_i" + loop_id.toString().padLeft(4, "0")
+        script:
+        surf_flow_command="cp ${tractogram.getSimpleName()}_cut.fib ${tractogram.getSimpleName()}_sf.fib"
+        if ((params.surf_flow_nb_step as Integer) > 1 )
+            surf_flow_command=\
+                """
+                scil_surface_combine_flow.py ${surf} \
+                    ${flow} \
+                    ${tractogram.getSimpleName()}_cut.npz \
+                    ${tractogram.getSimpleName()}_cut.fib \
+                    ${tractogram.getSimpleName()}_sf.fib \
+                    --compression_rate ${params.compression_rate}
+                """
+        """
+        scil_convert_tractogram.py ${tractogram} ${tractogram.getSimpleName()}.fib
 
-    seed_direction_tag=""
-    seed_direction_tag_inter=""
-    if (params.use_seed_direction) {
-        seed_direction_tag="--set_dir"
-        seed_direction_tag_inter="--surface_seeds ${sid}__seeds_${rand_loop_id}.npz"
+        scil_surface_tractogram_intersections.py ${surf} \
+            ${tractogram.getSimpleName()}.fib \
+            ${s_type} ${s_mask} \
+            --output_intersections ${tractogram.getSimpleName()}_cut.npz \
+            --output_tractogram ${tractogram.getSimpleName()}_cut.fib
+
+        $surf_flow_command
+
+        scil_surface_filtering.py  ${surf}\
+            ${tractogram.getSimpleName()}_cut.npz\
+            ${tractogram.getSimpleName()}_sf.fib \
+            ${tractogram.getSimpleName()}_filtered.fib\
+            --out_intersection ${tractogram.getSimpleName()}_filtered.npz\
+            --min_length ${params.minimum_length}\
+            --max_length ${params.maximum_length}
+
+        """
     }
 
-    first_cut_tag=""
-    if (params.use_only_first_cut) {
-        first_cut_tag="--only_first_cut"
-    }
+    intersections_for_concatenate
+        .groupTuple()
+        .set{intersections_grouped_for_concatenate}
 
-    flow_line="cp ${sid}__cut_${rand_loop_id}.fib ${sid}__set_${rand_loop_id}.fib"
-    if ((params.surf_flow_nb_step as Integer) > 1 ) {
-        flow_line=""" scil_surface_combine_flow.py ${surf} ${flow}\
-                    ${sid}__intersections_${rand_loop_id}.npz\
-                    ${sid}__cut_${rand_loop_id}.fib\
-                    ${sid}__set_${rand_loop_id}.fib\
-                    --compression_rate ${params.compression_rate} """
-    }
-
-    """
-    scil_surface_seed_map.py ${surf}\
-        ${sid}__seeding_map_${rand_loop_id}.npy\
-        --triangle_weight ${seed_map}\
-        --previous_density ${sum_density}
-
-    scil_surface_seeds_from_map.py ${surf} ${sid}__seeding_map_${rand_loop_id}.npy\
-        ${params.nb_seeds_per_random_nb}\
-        ${sid}__seeds_${rand_loop_id}.npz\
-        --random_number_generator ${random_id}
-
-    scil_surface_pft_dipy.py ${fodf} ${map_include} ${map_exclude} ${surf}\
-        ${sid}__seeds_${rand_loop_id}.npz\
-        ${sid}__set_${rand_loop_id}.trk\
-        --algo ${params.tractography_algo}\
-        --step ${params.tractography_step}\
-        --theta ${params.tractography_theta}\
-        --sfthres ${params.tractography_sfthres}\
-        --max_length ${params.maximum_length}\
-        --random_seed ${loop_id}\
-        --compress ${params.compression_rate}\
-        --particles ${params.pft_particles}\
-        --back ${params.pft_back}\
-        --forward ${params.pft_front}\
-        ${seed_direction_tag}
-
-    scil_convert_tractogram.py ${sid}__set_${rand_loop_id}.trk \
-        ${sid}__set_${rand_loop_id}.fib
-
-    scil_surface_tractogram_intersections.py ${surf}\
-        ${sid}__set_${rand_loop_id}.fib\
-        ${s_type} ${s_mask} ${seed_direction_tag_inter} ${first_cut_tag}\
-        --output_intersections ${sid}__intersections_${rand_loop_id}.npz\
-        --output_tractogram ${sid}__cut_${rand_loop_id}.fib\
-
-    $flow_line
-
-    scil_surface_filtering.py ${surf}\
-        ${sid}__intersections_${rand_loop_id}.npz\
-        ${sid}__set_${rand_loop_id}.fib\
-        ${sid}__set_${rand_loop_id}_filtered.fib\
-        --out_intersections ${sid}__intersections_${rand_loop_id}_filtered.npz\
-        --min_length ${params.minimum_length}\
-        --max_length ${params.maximum_length}
-
-    scil_surface_intersections_density.py ${surf} ${sid}__intersections_${rand_loop_id}_filtered.npz\
-        ${sid}__set_density_${rand_loop_id}.npy
-
-    scil_surface_seed_map.py ${surf} ${sid}__sum_density_${rand_loop_id}.npy\
-        --sum_maps ${sum_density} ${sid}__set_density_${rand_loop_id}.npy
-    """
 }
+else{
 
-intersections_for_concatenate
-    .groupTuple(size: nb_tracking_per_sub)
-    .set{intersections_grouped_for_concatenate}
+    surfaces_for_seed
+        .join(seed_mask_for_set_nf)
+        .set{data_rand_for_surface_seed}
+
+    process E__Surface_Seeding_Map {
+        cpus 1
+
+        input:
+        set sid, file(surf), file(mask)\
+            from data_rand_for_surface_seed
+
+        output:
+        set sid, "${sid}__seeding_map_0.npy", "${sid}__zeros_tri_map.npy"\
+            into surfaces_seeding_map_for_set
+
+        script:
+        area_seeding_tag=""
+        if (params.seeds_weighted_per_area) {
+            area_seeding_tag=" --triangle_area_weighting "
+        }
+        """
+        scil_surface_seed_map.py ${surf}\
+            ${sid}__seeding_map_0.npy\
+            --vts_mask ${mask}\
+            ${area_seeding_tag}
+
+        scil_surface_seed_map.py ${surf} ${sid}__zeros_tri_map.npy\
+            --zeros_map
+        """
+    }
+
+    // Where the magic happen
+    nb_tracking_per_sub = params.nb_dynamic_seeding_iter * (random_generator_list).size()
+    total_tracking = nb_subject*(nb_tracking_per_sub+1)
+
+    surfaces_seeding_map_for_set
+        .combine(random_generator_list)
+        .combine([0])
+        .set{setup_loop_ch}
+
+    feedback_ch = Channel.create()
+    intersections_for_concatenate = Channel.create()
+    streamlines_for_concatenate = Channel.create()
+    set_input_ch = setup_loop_ch.mix(feedback_ch).take(total_tracking)
+
+    set_input_ch
+        .combine(surface_flow_surfaces_for_pft, by : 0)
+        .combine(fodf_and_map_for_pft, by : 0)
+        .combine(intersections_mask_for_set_nf, by : 0)
+        .combine(surface_type_for_set_nf, by : 0)
+        .combine(surface_flow_lines_for_combine, by : 0)
+        .set{data_for_set}
+
+    process F__Surface_Enhanced_Tractography {
+        cpus 1
+
+        input:
+        set sid, file(seed_map), file(sum_density), random_id, loop_id,\
+            file(surf), file(fodf), file(map_exclude), file(map_include),\
+            file(s_mask), file(s_type), file(flow)\
+                from data_for_set
+
+        output:
+        set sid, "${sid}__intersections_${rand_loop_id}_filtered.npz"\
+            into intersections_for_concatenate
+        set sid, "${sid}__set_${rand_loop_id}_filtered.fib"\
+            into streamlines_for_concatenate
+        set sid, file(seed_map), "${sid}__sum_density_${rand_loop_id}.npy", random_id, next_id\
+            into feedback_ch
+
+        file "${sid}__seeding_map_${rand_loop_id}.npy"
+        file "${sid}__seeds_${rand_loop_id}.npz"
+        file "${sid}__set_density_${rand_loop_id}.npy"
+
+        when:
+        loop_id < params.nb_dynamic_seeding_iter
+
+        script:
+        next_id = loop_id + 1
+        rand_loop_id = random_id.toString().padLeft(4, "0") + "_i" + loop_id.toString().padLeft(4, "0")
+
+        seed_direction_tag=""
+        seed_direction_tag_inter=""
+        if (params.use_seed_direction) {
+            seed_direction_tag="--set_dir"
+            seed_direction_tag_inter="--surface_seeds ${sid}__seeds_${rand_loop_id}.npz"
+        }
+
+        first_cut_tag=""
+        if (params.use_only_first_cut) {
+            first_cut_tag="--only_first_cut"
+        }
+
+        flow_line="cp ${sid}__cut_${rand_loop_id}.fib ${sid}__set_${rand_loop_id}.fib"
+        if ((params.surf_flow_nb_step as Integer) > 1 ) {
+            flow_line=""" scil_surface_combine_flow.py ${surf} ${flow}\
+                        ${sid}__intersections_${rand_loop_id}.npz\
+                        ${sid}__cut_${rand_loop_id}.fib\
+                        ${sid}__set_${rand_loop_id}.fib\
+                        --compression_rate ${params.compression_rate} """
+        }
+
+        """
+        scil_surface_seed_map.py ${surf}\
+            ${sid}__seeding_map_${rand_loop_id}.npy\
+            --triangle_weight ${seed_map}\
+            --previous_density ${sum_density}
+
+        scil_surface_seeds_from_map.py ${surf} ${sid}__seeding_map_${rand_loop_id}.npy\
+            ${params.nb_seeds_per_random_nb}\
+            ${sid}__seeds_${rand_loop_id}.npz\
+            --random_number_generator ${random_id}
+
+        scil_surface_pft_dipy.py ${fodf} ${map_include} ${map_exclude} ${surf}\
+            ${sid}__seeds_${rand_loop_id}.npz\
+            ${sid}__set_${rand_loop_id}.trk\
+            --algo ${params.tractography_algo}\
+            --step ${params.tractography_step}\
+            --theta ${params.tractography_theta}\
+            --sfthres ${params.tractography_sfthres}\
+            --max_length ${params.maximum_length}\
+            --random_seed ${loop_id}\
+            --compress ${params.compression_rate}\
+            --particles ${params.pft_particles}\
+            --back ${params.pft_back}\
+            --forward ${params.pft_front}\
+            ${seed_direction_tag}
+
+        scil_convert_tractogram.py ${sid}__set_${rand_loop_id}.trk \
+            ${sid}__set_${rand_loop_id}.fib
+
+        scil_surface_tractogram_intersections.py ${surf}\
+            ${sid}__set_${rand_loop_id}.fib\
+            ${s_type} ${s_mask} ${seed_direction_tag_inter} ${first_cut_tag}\
+            --output_intersections ${sid}__intersections_${rand_loop_id}.npz\
+            --output_tractogram ${sid}__cut_${rand_loop_id}.fib\
+
+        $flow_line
+
+        scil_surface_filtering.py ${surf}\
+            ${sid}__intersections_${rand_loop_id}.npz\
+            ${sid}__set_${rand_loop_id}.fib\
+            ${sid}__set_${rand_loop_id}_filtered.fib\
+            --out_intersections ${sid}__intersections_${rand_loop_id}_filtered.npz\
+            --min_length ${params.minimum_length}\
+            --max_length ${params.maximum_length}
+
+        scil_surface_intersections_density.py ${surf} ${sid}__intersections_${rand_loop_id}_filtered.npz\
+            ${sid}__set_density_${rand_loop_id}.npy
+
+        scil_surface_seed_map.py ${surf} ${sid}__sum_density_${rand_loop_id}.npy\
+            --sum_maps ${sum_density} ${sid}__set_density_${rand_loop_id}.npy
+        """
+    }
+
+    intersections_for_concatenate
+        .groupTuple(size: nb_tracking_per_sub)
+        .set{intersections_grouped_for_concatenate}
+}
 
 process G__Concatenate_Intersection {
     cpus 1
