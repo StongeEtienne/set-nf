@@ -202,7 +202,7 @@ else if (params.is_freesurfer) {
             .set{in_surfaces}
 
         (annots_for_surfaces_masks, annots_for_surfaces_labels, label_vol_to_convert, surfaces_for_surfaces_masks, surfaces_for_surfaces_labels, surfaces_for_lps) = in_surfaces
-          .map{sid, lh_annot, lh_pial, lh_white, rh_annot, rh_pial, rh_white, wmparc ->
+          .map{sid, lh_annot, rh_annot, wmparc, lh_pial, lh_white, rh_pial, rh_white ->
               [tuple(sid, lh_annot, rh_annot),
               tuple(sid, lh_annot, rh_annot),
               tuple(sid, wmparc),
