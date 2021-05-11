@@ -57,14 +57,10 @@ do
         fi
     done
 
-    mkdir -p ${OUTDIR}/${i}/Register_T1
-    for cfile in output0GenericAffine.mat output1InverseWarp.nii.gz;
+    mkdir -p ${OUTDIR}/${i}/Tracking
+    for cfile in ${TFINDIR}/${i}/*/*.trk;
     do
-        if [ -f ${TFINDIR}/${i}/Register_T1/*${cfile} ]; then
-            cp -L ${TFINDIR}/${i}/Register_T1/*${cfile}  ${OUTDIR}/${i}/Register_T1/
-        else
-            echo "WARNING! ${i} ${cfile} was not found"
-        fi
+	    cp -L ${cfile}  ${OUTDIR}/${i}/Tracking/
     done
 
 done

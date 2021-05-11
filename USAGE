@@ -1,10 +1,10 @@
-SET nextflow pipeline
-=====================
-Run the "Surface-Enhanced Tractography" (SET) nextflow pipeline
+SET-FLOW nextflow
+====================================================
+Apply "Surface Flow", to the given Tractoflow result
 
 USAGE
 nextflow run main.nf -profile AND --surfaces AND --tractoflow  {OPT --nowarp}
-nextflow run main.nf -profile AND --surfaces AND --fodf  AND --pft_maps AND [--antswarp OR --nowarp]  {OPT --rois_seed}
+nextflow run main.nf -profile AND --surfaces AND  [--antswarp OR --nowarp]
 
 
 PROFILE
@@ -15,8 +15,7 @@ You need to chose a profile with "-profile chosen_profile" for surfaces and atla
   freesurfer_a2009s_proper  : Freesurfer a2009s surfaces with each subcortical structures (separate) and brainstem
 
   civet2_dkt                : CIVET 2.0 DKT surfaces with each subcortical structures (separate) and brainstem
-
-  vtk                       : VTK surfaces directly as input, combined with a freesurfer_* profile
+  civet2_aal                : CIVET 2.0 AAL surfaces with each subcortical structures (separate) and brainstem
 
 For CIVET, if your not using singularity image or want another template use: "--civet_template path/to/CIVET_2.0"
 
@@ -30,29 +29,11 @@ DESCRIPTION
 
 
 PARAMETERS
---surf_smooth_nb_step           Surface smooth number of step ($surf_smooth_nb_step).
---surf_smooth_step_size         Surface smooth step size ($surf_smooth_step_size).
+--surf_smooth_nb_step                       Surface smooth number of step ($surf_smooth_nb_step).
+--surf_smooth_step_size                     Surface smooth step size ($surf_smooth_step_size).
 
---surf_flow_nb_step             Surface Flow, total number of step ($surf_flow_nb_step).
---surf_flow_step_size           Surface Flow, step size ($surf_flow_step_size).
-
---rois_seeding                  Seed tractography along rois, according to a given fa map ($rois_seeding).
---seeds_weighted_per_area       Weight seeds probability per triangle area ($seeds_weighted_per_area).
---nb_seeds_per_random_nb        Number of seeds per random_nb_generator ($nb_seeds_per_random_nb).
---random_nb_generator           List of numbers for the random generator ("$random_nb_generator").
---nb_dynamic_seeding_iter       Number of iterative seeding, 1 for standard ($nb_dynamic_seeding_iter).
---use_seed_direction            Use surface normal to initialize streamlines ($use_seed_direction).
---use_only_first_cut            Recover only the first cut of each streamline ($use_only_first_cut).
-
---tractography_algo             PFT algorithm [prob, det] ($tractography_algo).
---tractography_step             PFT step size ($tractography_step).
---tractography_theta            PFT maximum angle between 2 steps ($tractography_theta).
---tractography_sfthres          PFT fodf peak threshold ($tractography_sfthres).
-
---pft_sfthres_init                          PFT initial fodf peak threshold ($pft_sfthres_init).
---pft_particles                             PFT number of particles to use ($pft_particles).
---pft_back                                  PFT back tracking length in mm ($pft_back).
---pft_front                                 PFT forward tracking length in mm ($pft_front).
+--surf_flow_nb_step                         Surface Flow, total number of step ($surf_flow_nb_step).
+--surf_flow_step_size                       Surface Flow, step size ($surf_flow_step_size).
 
 --compression_rate                          Final Tractogram compression rate ($compression_rate).
 
@@ -75,5 +56,5 @@ If singularity is not used, "scilpy/scripts" folder need to be in your PATH envi
 The working directory is, by default, set to "./work".
     To change it, use the "-w WORK_DIR" argument.
 
-The default config file is "set-nf/nextflow.config".
+The default config file is "set-nf-flow/nextflow.config".
 Use "-C config_file.config" to specify a non-default configuration file: "nextflow -C config_file.config run ...".
