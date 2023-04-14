@@ -17,6 +17,10 @@ fi
 FSINDIR=$(readlink -m ${i})
 OUTDIR=$(readlink -m ${o})
 
+if [ -d "${FSINDIR}/results/" ]; then
+    FSINDIR=${FSINDIR}/results
+fi
+
 echo "Freesurfer folder: ${FSINDIR}"
 echo "Output folder: ${OUTDIR}"
 
@@ -30,28 +34,33 @@ do
     mkdir -p ${OUTDIR}/${i}/label
     for cfile in lh.aparc.annot rh.aparc.annot lh.aparc.a2009s.annot rh.aparc.a2009s.annot;
     do
-        if [ -f ${FSINDIR}/${i}/label/${cfile} ]; then
-            cp -L ${FSINDIR}/${i}/label/${cfile}  ${OUTDIR}/${i}/label/
+        FILE=`find ${FSINDIR}/${i} -name ${cfile} -print -quit`
+        if [ -n "${FILE}" ]; then
+            cp -L ${FILE} ${OUTDIR}/${i}/label/${cfile}
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
     done
 
     mkdir -p ${OUTDIR}/${i}/mri
-    for cfile in wmparc;
-    do
-        if [ -f ${FSINDIR}/${i}/mri/${cfile}* ]; then
-            cp -L ${FSINDIR}/${i}/mri/${cfile}*  ${OUTDIR}/${i}/mri/
+    FILE=`find ${FSINDIR}/${i} -name "wmparc.mgz" -print -quit`
+    if [ -n "${FILE}" ]; then
+        cp -L ${FILE} ${OUTDIR}/${i}/mri/wmparc.mgz
+    else
+        FILE=`find ${FSINDIR}/${i} -name "wmparc.nii*" -print -quit`
+        if [ -n "${FILE}" ]; then
+            cp -L ${FILE} ${OUTDIR}/${i}/mri/
         else
-            echo "WARNING! ${i} ${cfile} was not found"
+            echo "WARNING! ${i} wmparc was not found"
         fi
-    done
+    fi
 
     mkdir -p ${OUTDIR}/${i}/surf
     for cfile in lh.pial lh.white rh.pial rh.white;
     do
-        if [ -f ${FSINDIR}/${i}/surf/${cfile} ]; then
-            cp -L ${FSINDIR}/${i}/surf/${cfile}  ${OUTDIR}/${i}/surf/
+        FILE=`find ${FSINDIR}/${i} -name ${cfile} -print -quit`
+        if [ -n "${FILE}" ]; then
+            cp -L ${FILE} ${OUTDIR}/${i}/surf/${cfile}
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi

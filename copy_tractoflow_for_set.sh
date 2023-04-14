@@ -17,6 +17,10 @@ fi
 TFINDIR=$(readlink -m ${i})
 OUTDIR=$(readlink -m ${o})
 
+if [ -d "${TFINDIR}/results/" ]; then
+    TFINDIR=${TFINDIR}/results
+fi
+
 echo "Tractoflow/results folder: ${TFINDIR}"
 echo "Output folder: ${OUTDIR}"
 
@@ -30,8 +34,9 @@ do
     mkdir -p ${OUTDIR}/${i}/DTI_Metrics
     for cfile in fa.nii.gz;
     do
-        if [ -f ${TFINDIR}/${i}/DTI_Metrics/*${cfile} ]; then
-            cp -L ${TFINDIR}/${i}/DTI_Metrics/*${cfile}  ${OUTDIR}/${i}/DTI_Metrics/
+        FILE=`find ${TFINDIR}/${i} -name "*__${cfile}" -print `
+        if [ -n "${FILE}" ]; then
+            cp -L ${FILE} ${OUTDIR}/${i}/DTI_Metrics/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
@@ -40,8 +45,9 @@ do
     mkdir -p ${OUTDIR}/${i}/FODF_Metrics
     for cfile in fodf.nii.gz;
     do
-        if [ -f ${TFINDIR}/${i}/FODF_Metrics/*${cfile} ]; then
-            cp -L ${TFINDIR}/${i}/FODF_Metrics/*${cfile}  ${OUTDIR}/${i}/FODF_Metrics/
+        FILE=`find ${TFINDIR}/${i} -name "*__${cfile}" -print `
+        if [ -n "${FILE}" ]; then
+            cp -L ${FILE} ${OUTDIR}/${i}/FODF_Metrics/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
@@ -50,8 +56,9 @@ do
     mkdir -p ${OUTDIR}/${i}/PFT_Maps
     for cfile in map_exclude.nii.gz map_include.nii.gz;
     do
-        if [ -f ${TFINDIR}/${i}/PFT_Maps/*${cfile} ]; then
-            cp -L ${TFINDIR}/${i}/PFT_Maps/*${cfile}  ${OUTDIR}/${i}/PFT_Maps/
+        FILE=`find ${TFINDIR}/${i} -name "*__${cfile}" -print `
+        if [ -n "${FILE}" ]; then
+            cp -L ${FILE} ${OUTDIR}/${i}/PFT_Maps/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
@@ -60,8 +67,9 @@ do
     mkdir -p ${OUTDIR}/${i}/Register_T1
     for cfile in output0GenericAffine.mat output1InverseWarp.nii.gz;
     do
-        if [ -f ${TFINDIR}/${i}/Register_T1/*${cfile} ]; then
-            cp -L ${TFINDIR}/${i}/Register_T1/*${cfile}  ${OUTDIR}/${i}/Register_T1/
+        FILE=`find ${TFINDIR}/${i} -name "*__${cfile}" -print `
+        if [ -n "${FILE}" ]; then
+            cp -L ${FILE} ${OUTDIR}/${i}/Register_T1/
         else
             echo "WARNING! ${i} ${cfile} was not found"
         fi
