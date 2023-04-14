@@ -18,7 +18,13 @@ params.antswarp = false
 params.nowarp = false
 
 params.help = false
-random_generator_list = params.random_nb_generator.split(',').collect{it as int}
+
+if(params.random_nb_generator instanceof Integer){
+    random_generator_list = [params.random_nb_generator]
+}
+else{
+    random_generator_list = params.random_nb_generator.split(',').collect{it as int}
+}
 
 if(params.help) {
     usage = file("$baseDir/USAGE")
@@ -152,7 +158,7 @@ if (params.tractoflow){
         .ifEmpty { exit 1, "Cannot find ${tractoflow}/**/Register_T1/*{output0GenericAffine.mat,output1InverseWarp.nii.gz}" }
 
     fodf_and_map_for_pft = Channel
-        .fromFilePairs("${tractoflow}/**/{FODF_Metrics/*fodf.nii.gz,PFT_Maps/*map_exclude.nii.gz,PFT_Maps/*map_include.nii.gz}",
+        .fromFilePairs("${tractoflow}/**/{FODF_Metrics/*fodf.nii.gz,PFT*Maps/*map_exclude.nii.gz,PFT*Maps/*map_include.nii.gz}",
                        size: 3, maxDepth:3, flat: true) {it.parent.parent.name}
         .ifEmpty { exit 1, "Cannot find ${tractoflow}/**/{FODF_Metrics/*fodf.nii.gz,PFT_Maps/*map_exclude.nii.gz,PFT_Maps/*map_include.nii.gz}" }
 
@@ -235,9 +241,6 @@ else {
         log.error "Use --pft_maps path/to/warps/ (or --tractoflow)"
     }
 
-    fodf_for_pft
-        .join(maps_for_pft)
-        .set{fodf_and_map_for_pft}
 }
 
 if (params.nowarp){
